@@ -185,6 +185,7 @@ class ParticleFilter(Node):
         self.normalize_particles()
 
         # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
+            #   Brenna
         # just to get started we will fix the robot's pose to always be at the origin
         self.robot_pose = Pose()
         if hasattr(self, 'odom_pose'):
@@ -223,6 +224,7 @@ class ParticleFilter(Node):
         # make sure the distribution is normalized
         self.normalize_particles()
         # TODO: fill out the rest of the implementation
+            #   Ansel
 
     def update_particles_with_laser(self, r, theta):
         """ Updates the particle weights in response to the scan data
@@ -230,6 +232,7 @@ class ParticleFilter(Node):
             theta: the angle relative to the robot frame for each corresponding reading 
         """
         # TODO: implement this
+            #   Julian
         pass
 
     def update_initial_pose(self, msg):
@@ -247,13 +250,21 @@ class ParticleFilter(Node):
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         self.particle_cloud = []
         # TODO create particles
+            #   Julian
+        ######################
+        width = self.occupancy_field.width
+        for i in range self.n_particles:
+            self.particle_cloud[i] = Particle(0, 0, 0, 0)
 
+        
+        ######################
         self.normalize_particles()
         self.update_robot_pose()
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
         # TODO: implement this
+            #   is this necessary?
         pass
 
     def publish_particles(self, timestamp):
