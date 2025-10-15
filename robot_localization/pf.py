@@ -181,13 +181,23 @@ class ParticleFilter(Node):
                 (1): compute the mean pose
                 (2): compute the most likely pose (i.e. the mode of the distribution)
         """
+        #option 2
+
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-            #   Brenna
-        # just to get started we will fix the robot's pose to always be at the origin
-        self.robot_pose = Pose()
+         #get the best particle
+        best_particle = max(self.particle_cloud, key=lambda p: p.w)
+
+        x = best_particle.x
+        y = best_particle.y
+        z = best_particle.z
+        theta = best_particle.theta
+
+        new_pose = quaternion_from_euler(0, 0, theta)
+        self.robot_pose = Pose(position=Point(x=x, y=y, z=0.0),
+                    orientation=Quaternion(x=new_pose[0], y=new_pose[1], z=new_pose[2], w=new_pose[3]))
+
         if hasattr(self, 'odom_pose'):
             self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                             self.odom_pose)
@@ -263,9 +273,10 @@ class ParticleFilter(Node):
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        # TODO: implement this
-            #   is this necessary?
-        pass
+        total_weight = sum(particle.w for particle in self.particle_cloud)
+
+        for p in self.particle_cloud:
+            p.w /= total_weight
 
     def publish_particles(self, timestamp):
         msg = ParticleCloud()
