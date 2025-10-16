@@ -195,7 +195,7 @@ class ParticleFilter(Node):
         theta = best_particle.theta
 
         new_pose = quaternion_from_euler(0, 0, theta)
-        self.robot_pose = Pose(position=Point(x=x, y=y, z=0.0),
+        self.robot_pose = Pose(position=Point(x=x, y=y, z=z),
                     orientation=Quaternion(x=new_pose[0], y=new_pose[1], z=new_pose[2], w=new_pose[3]))
 
         if hasattr(self, 'odom_pose'):
