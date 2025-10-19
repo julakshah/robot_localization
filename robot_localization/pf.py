@@ -313,7 +313,18 @@ class ParticleFilter(Node):
         """
         # TODO: implement this
         #   Julian
-        pass
+        ######################
+        for p in self.particle_cloud:
+            particle_ang = p.theta # radians
+            x_list = r * np.sin(theta + particle_ang)
+            y_list = r * np.cos(theta + particle_ang)
+            weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
+            tot_weight = 0
+            for w in weights:
+                if w is not np.float('nan'):
+                    weight = weight + w
+                    p.weight = weight
+        ######################
 
     def update_initial_pose(self, msg):
         """Callback function to handle re-initializing the particle filter based on a pose estimate.
@@ -336,10 +347,31 @@ class ParticleFilter(Node):
         # TODO create particles
         #   Julian
         ######################
-        width = self.occupancy_field.width
-        for i in range self.n_particles:
-            self.particle_cloud[i] = Particle(0, 0, 0, 0)
+        bounding_box = self.occupancy_field.get_obstacle_bounding_box()
+        x_up = bounding_box(0)(1); x_low = bounding_box(0)(0);
+        y_up = bounding_box(1)(1); y_low = bounding_box(1)(0);
+        width = x_up - x_low # directionless
+        height = y_up - y_low # directionless
+        
+        grid_size = int(np.sqrt(self.n_particles)) # smallest square grid of particles
+        width_increment = width / (grid_size + 1)
+        height_increment = height / (grid_size + 1)
+        for i in range(grid_size):
+            for j in range(grid_size):
+                x_pos = width_increment*(i+1)
+                y_pos = height_increment*(j+1)
+                rand_theta = np.random.rand() * np.pi * 2 #radians
+                self.particle_cloud[i + j] = Particle(x=x_pos, y=y_pos, theta=rand_theta)
 
+        # randomly distribute extra
+        grid_num = grid_size**2
+        extra = self.n_particles - grid_num
+        
+        for e in range(extra):
+            x_pos = x_low + np.random.rand() * width
+            y_pos = y_low + np.random.rand() * height
+            rand_theta = np.random.rand() * np.pi * 2 #radians
+            self.particle_cloud[1+grid+num+e] = Particle(x=x_pos, y=y_pos, theta=rand_theta)
         ######################
         self.normalize_particles()
         self.update_robot_pose()
