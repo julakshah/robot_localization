@@ -263,7 +263,7 @@ class ParticleFilter(Node):
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        # Convert particles into dictionary with keys representing the weights of each
+        # Create a dictionary to store particles with keys representing the weights of each
         _particle_dict = {}
         for particles in self.particle_cloud:
             _particle_dict[particles[3]] = particles
