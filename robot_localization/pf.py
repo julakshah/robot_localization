@@ -254,9 +254,9 @@ class ParticleFilter(Node):
             return
 
         for particle in self.particle_cloud:
-            particle.x += new_odom_xy_theta[0]
-            particle.y += new_odom_xy_theta[1]
-            particle.theta += new_odom_xy_theta[2]
+            particle.x += delta[0]
+            particle.y += delta[1]
+            particle.theta += delta[2]
 
     def resample_particles(self):
         """Resample the particles according to the new particle weights.
