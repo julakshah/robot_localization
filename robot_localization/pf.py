@@ -336,7 +336,7 @@ class ParticleFilter(Node):
             for w in weights:
                 if w is not np.float("nan"):
                     weight = weight + w
-                    p.weight = weight
+                    p.w = weight
         ######################
 
     def update_initial_pose(self, msg):
