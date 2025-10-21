@@ -286,7 +286,7 @@ class ParticleFilter(Node):
         # Define scalar for weight to standard dev conversion
         _stdev_scalar = 2
 
-        for i in range(_resample_weights):
+        for i in range(mean_count):
             for particle in self.particle_cloud[
                 i
                 * round(1 / _percentage_kept - 1) : (
