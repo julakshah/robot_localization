@@ -279,14 +279,16 @@ class ParticleFilter(Node):
             _particle_dict[particles.w] = particles
         # Define list of particle weights to sort
         _resample_weights = list(_particle_dict.keys())
+        print(f"resampled weights first is: {_resample_weights}")
         # Keep top 15% of particles
         _percentage_kept = 0.15
         _mean_count = round(_percentage_kept * len(self.particle_cloud))
-        _resample_weights = _resample_weights.sort()[0:_mean_count]
+        _resample_weights = sorted(_resample_weights)[-_mean_count:]
+        print(f"resampled weights then is {_resample_weights}")
         # Define scalar for weight to standard dev conversion
         _stdev_scalar = 2
 
-        for i in range(mean_count):
+        for i in range(_mean_count):
             for particle in self.particle_cloud[
                 i
                 * round(1 / _percentage_kept - 1) : (
@@ -334,11 +336,12 @@ class ParticleFilter(Node):
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
-                print(f"w: {type(w)}")
-                if w is not float("nan"):
+                #print(f"w: {w}")
+                #print(f"w type: {type(w)}")
+                if not np.isnan(w):
                     tot_weight = tot_weight + w
-            #print(f"weight: {tot_weight}")
-            p.weight = tot_weight
+            print(f"weight: {tot_weight}")
+            p.w = tot_weight
         ######################
 
     def update_initial_pose(self, msg):
