@@ -278,7 +278,7 @@ class ParticleFilter(Node):
         for particles in self.particle_cloud:
             _particle_dict[particles.w] = particles
         # Define list of particle weights to sort
-        _resample_weights = list(_particle_dict.keys)
+        _resample_weights = list(_particle_dict.keys())
         # Keep top 15% of particles
         _percentage_kept = 0.15
         _mean_count = round(_percentage_kept * len(self.particle_cloud))
