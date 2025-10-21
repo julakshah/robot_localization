@@ -288,7 +288,7 @@ class ParticleFilter(Node):
         _resample_weights = sorted(_resample_weights)[-_mean_count:]
         print(f"resampled weights then is {_resample_weights}")
         # Define scalar for weight to standard dev conversion
-        _stdev_scalar = 2
+        _stdev_scalar = 10
 
         for i in range(_mean_count):
             for particle in self.particle_cloud[
@@ -343,7 +343,6 @@ class ParticleFilter(Node):
                 #print(f"w type: {type(w)}")
                 if not np.isnan(w):
                     tot_weight = tot_weight + w
-            print(f"weight: {tot_weight}")
             p.w = tot_weight
         ######################
 
