@@ -334,9 +334,10 @@ class ParticleFilter(Node):
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
+                print(f"w: {type(w)}")
                 if w is not float("nan"):
                     tot_weight = tot_weight + w
-            print(f"weight: {tot_weigth}")
+            #print(f"weight: {tot_weight}")
             p.weight = tot_weight
         ######################
 
