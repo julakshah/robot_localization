@@ -85,7 +85,7 @@ class ParticleFilter(Node):
         self.width = 0
         self.height = 0
 
-        self.n_particles = 1000  # the number of particles to use
+        self.n_particles = 3000  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
