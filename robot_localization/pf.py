@@ -276,7 +276,7 @@ class ParticleFilter(Node):
         # Create a dictionary to store particles with keys representing the weights of each
         _particle_dict = {}
         for particles in self.particle_cloud:
-            _particle_dict[particles[3]] = particles
+            _particle_dict[particles.w] = particles
         # Define list of particle weights to sort
         _resample_weights = list(_particle_dict.keys)
         # Keep top 15% of particles
