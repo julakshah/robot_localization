@@ -315,8 +315,8 @@ class ParticleFilter(Node):
         x_rand = rand_vals[0:_remaining_particles]
         y_rand = rand_vals[_remaining_particles:]
         # Adjust for map dimensions
-        x_rand = (2 * x_rand - 1) * self.width / 2 + self.x_low
-        y_rand = (2 * y_rand - 1) * self.height / 2 + self.y_low
+        x_rand = x_rand * self.width + self.x_low
+        y_rand = y_rand * self.height + self.y_low
         # Resample random particles
         for i in range(_remaining_particles):
             self.particle_cloud[i].x = x_rand[i]
