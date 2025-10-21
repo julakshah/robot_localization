@@ -300,12 +300,12 @@ class ParticleFilter(Node):
                 # Randomly choose x coordinate according to normal distribution
                 particle.x = np.random.normal(
                     _particle_dict[_resample_weights[-(i+1)]].x,
-                    _resample_weights[-(i+1)] * _stdev_scalar,
+                    _resample_weights[-(i+1)] / _stdev_scalar,
                 )
                 # Randomly choose y coordinate according to normal distribution
                 particle.y = np.random.normal(
                     _particle_dict[_resample_weights[-(i+1)]].y,
-                    _resample_weights[-(i+1)] * _stdev_scalar,
+                    _resample_weights[-(i+1)] / _stdev_scalar,
                 )
         # Get index for the last particle resampled
         _last_particle = len(_resample_weights) * round(1 / _percentage_kept - 1)
