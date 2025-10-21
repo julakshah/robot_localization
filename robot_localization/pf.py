@@ -85,7 +85,7 @@ class ParticleFilter(Node):
         self.width = 0
         self.height = 0
 
-        self.n_particles = 300  # the number of particles to use
+        self.n_particles = 1000  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
@@ -218,12 +218,11 @@ class ParticleFilter(Node):
 
         x = best_particle.x
         y = best_particle.y
-        z = best_particle.z
         theta = best_particle.theta
 
         new_pose = quaternion_from_euler(0, 0, theta)
         self.robot_pose = Pose(
-            position=Point(x=x, y=y, z=z),
+            position=Point(x=x, y=y),
             orientation=Quaternion(
                 x=new_pose[0], y=new_pose[1], z=new_pose[2], w=new_pose[3]
             ),
@@ -327,6 +326,7 @@ class ParticleFilter(Node):
         # TODO: implement this
         #   Julian
         ######################
+        print("running update")
         for p in self.particle_cloud:
             particle_ang = p.theta  # radians
             x_list = r * np.sin(theta + particle_ang)
@@ -334,9 +334,10 @@ class ParticleFilter(Node):
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
-                if w is not np.float("nan"):
-                    weight = weight + w
-                    p.weight = weight
+                if w is not float("nan"):
+                    tot_weight = tot_weight + w
+            print(f"weight: {tot_weigth}")
+            p.weight = tot_weight
         ######################
 
     def update_initial_pose(self, msg):
@@ -361,10 +362,10 @@ class ParticleFilter(Node):
         #   Julian
         ######################
         bounding_box = self.occupancy_field.get_obstacle_bounding_box()
-        x_up = bounding_box(0)(1)
-        x_low = bounding_box(0)(0)
-        y_up = bounding_box(1)(1)
-        y_low = bounding_box(1)(0)
+        x_up = bounding_box[0][1]
+        x_low = bounding_box[0][0]
+        y_up = bounding_box[1][1]
+        y_low = bounding_box[1][0]
         self.width = x_up - x_low  # directionless
         self.height = y_up - y_low  # directionless
 
@@ -373,12 +374,12 @@ class ParticleFilter(Node):
         height_increment = self.height / (grid_size + 1)
         for i in range(grid_size):
             for j in range(grid_size):
-                x_pos = width_increment * (i + 1)
-                y_pos = height_increment * (j + 1)
+                x_pos = x_low + (width_increment * (i + 1))
+                y_pos = y_low + (height_increment * (j + 1))
                 rand_theta = np.random.rand() * np.pi * 2  # radians
-                self.particle_cloud[i + j] = Particle(
+                self.particle_cloud.append(Particle(
                     x=x_pos, y=y_pos, theta=rand_theta
-                )
+                ))
 
         # randomly distribute extra
         grid_num = grid_size**2
@@ -388,9 +389,9 @@ class ParticleFilter(Node):
             x_pos = x_low + np.random.rand() * self.width
             y_pos = y_low + np.random.rand() * self.height
             rand_theta = np.random.rand() * np.pi * 2  # radians
-            self.particle_cloud[1 + grid + num + e] = Particle(
+            self.particle_cloud.append(Particle(
                 x=x_pos, y=y_pos, theta=rand_theta
-            )
+            ))
         ######################
         self.normalize_particles()
         self.update_robot_pose()
