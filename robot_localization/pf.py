@@ -299,12 +299,12 @@ class ParticleFilter(Node):
             ]:
                 # Randomly choose x coordinate according to normal distribution
                 particle.x = np.random.normal(
-                    _particle_dict[_resample_weights[i]].x,
+                    _particle_dict[_resample_weights[-i]].x,
                     _resample_weights[i] * _stdev_scalar,
                 )
                 # Randomly choose y coordinate according to normal distribution
                 particle.y = np.random.normal(
-                    _particle_dict[_resample_weights[i]].y,
+                    _particle_dict[_resample_weights[-i]].y,
                     _resample_weights[i] * _stdev_scalar,
                 )
         # Get index for the last particle resampled
@@ -312,6 +312,7 @@ class ParticleFilter(Node):
         # Calculate how many particles remain
         _remaining_particles = len(self.particle_cloud) - _last_particle
         rand_vals = np.random.random_sample(2 * _remaining_particles)
+        # Get random values 
         x_rand = rand_vals[0:_remaining_particles]
         y_rand = rand_vals[_remaining_particles:]
         # Adjust for map dimensions
