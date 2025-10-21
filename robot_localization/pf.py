@@ -84,6 +84,8 @@ class ParticleFilter(Node):
         # the width and height of bounding box, set in initialize_particle_cloud
         self.width = 0
         self.height = 0
+        self.x_low = 0 #lower left corner
+        self.y_low = 0 #lower left corner
 
         self.n_particles = 3000  # the number of particles to use
 
@@ -367,19 +369,19 @@ class ParticleFilter(Node):
         ######################
         bounding_box = self.occupancy_field.get_obstacle_bounding_box()
         x_up = bounding_box[0][1]
-        x_low = bounding_box[0][0]
+        self.x_low = bounding_box[0][0]
         y_up = bounding_box[1][1]
-        y_low = bounding_box[1][0]
-        self.width = x_up - x_low  # directionless
-        self.height = y_up - y_low  # directionless
+        self.y_low = bounding_box[1][0]
+        self.width = x_up - self.x_low  # directionless
+        self.height = y_up - self.y_low  # directionless
 
         grid_size = int(np.sqrt(self.n_particles))  # smallest square grid of particles
         width_increment = self.width / (grid_size + 1)
         height_increment = self.height / (grid_size + 1)
         for i in range(grid_size):
             for j in range(grid_size):
-                x_pos = x_low + (width_increment * (i + 1))
-                y_pos = y_low + (height_increment * (j + 1))
+                x_pos = self.x_low + (width_increment * (i + 1))
+                y_pos = self.y_low + (height_increment * (j + 1))
                 rand_theta = np.random.rand() * np.pi * 2  # radians
                 self.particle_cloud.append(Particle(
                     x=x_pos, y=y_pos, theta=rand_theta
@@ -390,8 +392,8 @@ class ParticleFilter(Node):
         extra = self.n_particles - grid_num
 
         for e in range(extra):
-            x_pos = x_low + np.random.rand() * self.width
-            y_pos = y_low + np.random.rand() * self.height
+            x_pos = self.x_low + np.random.rand() * self.width
+            y_pos = self.y_low + np.random.rand() * self.height
             rand_theta = np.random.rand() * np.pi * 2  # radians
             self.particle_cloud.append(Particle(
                 x=x_pos, y=y_pos, theta=rand_theta
