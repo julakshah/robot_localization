@@ -50,8 +50,6 @@ class Particle(object):
             orientation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]),
         )
 
-    # TODO: define additional helper functions if needed
-
 
 class ParticleFilter(Node):
     """The class that represents a Particle Filter ROS Node
@@ -84,20 +82,28 @@ class ParticleFilter(Node):
         # the width and height of bounding box, set in initialize_particle_cloud
         self.width = 0
         self.height = 0
-        self.x_low = 0 #left bound
-        self.x_up = 0 #right bound
-        self.y_low = 0 #bottom bound
-        self.y_up = 0 #top bound
-        self.center_percent = .2
-        self.center_percent_final = .02
-        self.redist_percent = .2
-        self.redist_percent_final = .93
-        self.lin_sd = .1
-        self.ang_sd = .02
-        self.scale_iteration_bound = 9 #num iterations to descale random particles
-        self.redist_witheld = self.redist_percent_final - self.redist_percent #percent of witheld particles till bound is reached
+        self.x_low = 0  # left bound
+        self.x_up = 0  # right bound
+        self.y_low = 0  # bottom bound
+        self.y_up = 0  # top bound
+        self.center_percent = 0.2  # initial percent of centers to distribute around
+        self.center_percent_final = (
+            0.02  # final percent of centers to distribute around
+        )
+        self.redist_percent = (
+            0.2  # initial amount particles to redistriubte around centers
+        )
+        self.redist_percent_final = (
+            0.93  # final amount particles to redistriubte around centers
+        )
+        self.lin_sd = 0.1  # linear standard deviation
+        self.ang_sd = 0.02  # angular standard deviation
+        self.scale_iteration_bound = 9  # num iterations to descale random particles
+        self.redist_witheld = (
+            self.redist_percent_final - self.redist_percent
+        )  # percent of witheld particles till bound is reached
         self.center_witheld = self.center_percent_final - self.center_percent
-        self.iteration = 0 #current iteration of the filter
+        self.iteration = 0  # current iteration of the filter
 
         self.n_particles = 3000  # the number of particles to use
 
@@ -105,8 +111,6 @@ class ParticleFilter(Node):
         self.a_thresh = (
             math.pi / 6
         )  # the amount of angular movement before performing an update
-
-        # TODO: define additional constants if needed
 
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.create_subscription(
@@ -203,7 +207,7 @@ class ParticleFilter(Node):
             self.update_particles_with_laser(r, theta)  # update based on laser scan
             self.update_robot_pose()  # update robot's pose based on particles
             self.resample_particles()  # resample particles to focus on areas of high density
-            self.scale_distribution_ratios() # scale the redistribution based on current iteration
+            self.scale_distribution_ratios()  # scale the redistribution based on current iteration
         # publish particles (so things like rviz can see them)
         self.publish_particles(msg.header.stamp)
 
@@ -258,7 +262,7 @@ class ParticleFilter(Node):
         that indicates the change in position and angle between the odometry
         when the particles were last updated and the current odometry.
         """
-        delta = (0,0,0)
+        delta = (0, 0, 0)
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(
             self.odom_pose
         )
@@ -276,17 +280,15 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        odom_lin_noise = .03
+        # noise factor
+        odom_lin_noise = 0.03
         odom_ang_noise = 0.01
+        # noise when updating odom
         samples = np.random.normal(0, self.lin_sd, 3)
         for p in self.particle_cloud:
-            ti = p.theta; xi = p.x; yi = p.y;
-            td = delta[2]; xd = delta[0]; yd = delta[1];
-            p.x += xd+odom_lin_noise*samples[0]
-            p.y += yd+odom_lin_noise*samples[1]
-            p.theta += td+odom_ang_noise*samples[2]
-
-
+            p.x += delta[0] + odom_lin_noise * samples[0]
+            p.y += delta[1] + odom_lin_noise * samples[1]
+            p.theta += delta[2] + odom_ang_noise * samples[2]
 
     def resample_particles(self):
         """Resample the particles according to the new particle weights.
@@ -301,19 +303,21 @@ class ParticleFilter(Node):
         for particle in self.particle_cloud:
             particles[particle.w] = particle
         sorted_p_keys = sorted(list(particles.keys()), reverse=True)
-        
-        center_keys = sorted_p_keys[:round(self.n_particles * self.center_percent)]
-        dist_num = int(np.floor(self.n_particles * self.redist_percent)) 
+
+        # define particle amounts from instance attributes
+        center_keys = sorted_p_keys[: round(self.n_particles * self.center_percent)]
+        dist_num = int(np.floor(self.n_particles * self.redist_percent))
         redist_num = int(np.floor(dist_num / len(center_keys)))
-        self.particle_cloud = [particles[key] for key in center_keys]
+        self.particle_cloud = [particles[key] for key in center_keys]  # good particles
+        # redistribute particle
         for key in center_keys:
-            
             for i in range(redist_num):
                 new_x = np.random.normal(particles[key].x, self.lin_sd)
                 new_y = np.random.normal(particles[key].y, self.lin_sd)
                 new_theta = np.random.normal(particles[key].y, self.ang_sd)
-                self.particle_cloud.append(Particle(x=new_x, y=new_y, theta=new_theta)) 
+                self.particle_cloud.append(Particle(x=new_x, y=new_y, theta=new_theta))
 
+        # randomly sample extra
         num_filled = len(center_keys) * redist_num
         num_extra = self.n_particles - num_filled
         for e in range(num_extra):
@@ -336,7 +340,7 @@ class ParticleFilter(Node):
                 else:
                     tot_weight += w
 
-            p.w = 1/tot_weight
+            p.w = 1 / tot_weight
 
     def update_initial_pose(self, msg):
         """Callback function to handle re-initializing the particle filter based on a pose estimate.
@@ -372,9 +376,7 @@ class ParticleFilter(Node):
                 x_pos = self.x_low + (width_increment * (i + 1))
                 y_pos = self.y_low + (height_increment * (j + 1))
                 rand_theta = np.random.rand() * np.pi * 2  # radians
-                self.particle_cloud.append(Particle(
-                    x=x_pos, y=y_pos, theta=rand_theta
-                ))
+                self.particle_cloud.append(Particle(x=x_pos, y=y_pos, theta=rand_theta))
 
         # randomly distribute extra
         grid_num = grid_size**2
@@ -391,8 +393,8 @@ class ParticleFilter(Node):
             x = self.x_low + np.random.rand() * self.width
             y = self.y_low + np.random.rand() * self.height
             t = np.random.rand() * np.pi * 2  # radians
-            if(np.isfinite(self.occupancy_field.get_closest_obstacle_distance(x, y))):
-                break;
+            if np.isfinite(self.occupancy_field.get_closest_obstacle_distance(x, y)):
+                break
         return Particle(x=x, y=y, theta=t)
 
     def normalize_particles(self):
@@ -405,8 +407,8 @@ class ParticleFilter(Node):
     def scale_distribution_ratios(self):
         """reduce randomly sampled percent as filter progresses"""
         if self.iteration < self.scale_iteration_bound - 1:
-            self.redist_percent += self.redist_witheld/self.scale_iteration_bound    
-            self.center_percent += self.center_witheld/self.scale_iteration_bound
+            self.redist_percent += self.redist_witheld / self.scale_iteration_bound
+            self.center_percent += self.center_witheld / self.scale_iteration_bound
             self.iteration += 1
         elif self.iteration == self.scale_iteration_bound - 1:
             self.redist_percent = self.redist_percent_final
