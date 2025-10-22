@@ -89,7 +89,7 @@ class ParticleFilter(Node):
         self.y_low = 0 #bottom bound
         self.y_up = 0 #top bound
 
-        self.n_particles = 300  # the number of particles to use
+        self.n_particles = 1000  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
@@ -265,13 +265,27 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        for particle in self.particle_cloud:
-            t = particle.theta
-            particle.x += delta[0] * np.sin(t) + delta[1] * np.sin(t + (np.pi/2))
-            particle.y += delta[0] * np.cos(t) + delta[1] * np.cos(t + (np.pi/2))
-            particle.theta += delta[2]
+        odom_noise = .2
+        heading_noise = 0.05
+        for p in self.particle_cloud:
+            ti = p.theta; xi = p.x; yi = p.y;
+            td = delta[2]; xd = delta[0]; yd = delta[1];
+            Ti = np.array([[np.cos(ti), -np.sin(ti), xi],
+                          [np.sin(ti), np.cos(ti), yi],
+                          [0, 0, 1]])
+            T_del = np.array([[np.cos(td), -np.sin(td), xd],
+                          [np.sin(td), np.cos(td), yd],
+                          [0, 0, 1]])
+            T_new = Ti @ T_del
+            p.x = T_new[0, 2]
+            p.y = T_new[1, 2]
+            p.theta = float(np.arctan2(T_new[1,0], T_new[0, 0]))
+            #p.x += delta[0] + np.random.randn() * odom_noise 
+            #p.y += delta[1] + np.random.randn() * odom_noise
+            #p.theta += delta[2] + np.random.randn() * heading_noise
 
     def random_p(self):
+        """function to get a random particle within the map"""
         x = self.x_low + np.random.rand() * self.width
         y = self.y_low + np.random.rand() * self.height
         t = rand_theta = np.random.rand() * np.pi * 2  # radians
@@ -288,60 +302,38 @@ class ParticleFilter(Node):
         self.normalize_particles()
         # Create a dictionary to store particles with keys representing the weights of each
         ######################
-        print("resampling particles")
-        percent_keep = .3
-        dist_center = 0
-        dist_sd = .33
-        resample_lin_noise = .1
-        resample_ang_noise = .02
 
-        #keep some particles based on weight kinda
-        num_keep = round(percent_keep * self.n_particles) 
-        self.particle_cloud = draw_random_sample(self.particle_cloud, [p.w for p in self.particle_cloud], num_keep)
-        #create random particles
-        for _ in range(self.n_particles - num_keep):
-            self.particle_cloud.append(self.random_p())
+        particles = {}
+        for particle in self.particle_cloud:
+            particles[particle.w] = particle
+        sorted_p_keys = sorted(list(particles.keys()), reverse=True)
+        center_percent = .15
+        redist_percent = .7
+        random_percent = 1-center_percent-redist_percent
+        
+        center_keys = sorted_p_keys[:round(self.n_particles * center_percent)]
+        dist_num = int(np.floor(self.n_particles * (center_percent + redist_percent))) 
+        redist_num = int(np.floor(dist_num / len(center_keys)))
+        lin_sd = .5
+        ang_sd = .02
+        self.particle_cloud = []
+        for ik, key in enumerate(center_keys):
+            for i in range(redist_num):
+                new_x = np.random.normal(particles[key].x, lin_sd)
+                new_y = np.random.normal(particles[key].y, lin_sd)
+                new_theta = np.random.normal(particles[key].y, ang_sd)
+                self.particle_cloud.append(Particle(x=new_x, y=new_y, theta=new_theta)) 
 
-        #add noise to particles
-        for p in self.particle_cloud:
-            samples = np.random.normal(dist_center, dist_sd, size=3)
-            p.x += resample_lin_noise*samples[0]
-            p.y += resample_lin_noise*samples[1]
-            p.theta += resample_ang_noise*samples[2]
-            p.x = max(self.x_up, min(self.x_low, p.x))
-            p.y = max(self.y_up, min(self.y_low, p.y))
-
-
-
-       # particles = {}
-       # for particle in self.particle_cloud:
-       #     particles[particle.w] = particle
-       # sorted_p_keys = sorted(list(particles.keys()), reverse=True)
-       # center_percent = .15
-       # redist_percent = .7
-       # random_percent = 1-center_percent-redist_percent
-       # 
-       # center_keys = sorted_p_keys[:round(self.n_particles * center_percent)]
-       # dist_num = int(np.floor(self.n_particles * (center_percent + redist_percent))) 
-       # redist_num = int(np.floor(dist_num / len(center_keys)))
-       # sd = 1
-       # for ik, key in enumerate(center_keys):
-       #     for i in range(redist_num):
-       #         new_x = np.random.normal(particles[key].x, sd)
-       #         new_y = np.random.normal(particles[key].y, sd)
-       #         new_theta = np.random.rand() * 2 * np.pi
-       #         self.particle_cloud[ik * redist_num + i] = Particle(x=new_x, y=new_y, theta=new_theta)
-
-       # num_dist = len(center_keys) * redist_num
-       # num_extra = self.n_particles - num_dist
-       # for e in range(num_extra):
-       #     x_pos = self.x_low + np.random.rand() * self.width
-       #     y_pos = self.y_low + np.random.rand() * self.height
-       #     rand_theta = np.random.rand() * np.pi * 2  # radians
-       #     self.particle_cloud.append(Particle(
-       #         x=x_pos, y=y_pos, theta=rand_theta
-       #     ))
-       # ######################
+        num_filled = len(center_keys) * redist_num
+        num_extra = self.n_particles - num_filled
+        for e in range(num_extra):
+            x_pos = self.x_low + np.random.rand() * self.width
+            y_pos = self.y_low + np.random.rand() * self.height
+            rand_theta = np.random.rand() * np.pi * 2  # radians
+            self.particle_cloud.append(Particle(
+                x=x_pos, y=y_pos, theta=rand_theta
+            ))
+        ######################
 
     def update_particles_with_laser(self, r, theta):
         """Updates the particle weights in response to the scan data
@@ -366,8 +358,6 @@ class ParticleFilter(Node):
                 else:
                     tot_weight += w
 
-            print(f"tot_weight is: {tot_weight}")
-            print(f"tot_weight inv is: {1/tot_weight}")
             p.w = 1/tot_weight
         ######################
 
