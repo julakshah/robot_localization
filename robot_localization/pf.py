@@ -88,8 +88,12 @@ class ParticleFilter(Node):
         self.x_up = 0 #right bound
         self.y_low = 0 #bottom bound
         self.y_up = 0 #top bound
+        self.center_percent = .05
+        self.redist_percent = .8
+        self.lin_sd = .1
+        self.ang_sd = .05
 
-        self.n_particles = 1000  # the number of particles to use
+        self.n_particles = 3000  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
@@ -265,31 +269,31 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        odom_noise = .2
-        heading_noise = 0.05
+        odom_lin_noise = .04
+        odom_ang_noise = 0.02
+        samples = np.random.normal(0, self.lin_sd, 3)
         for p in self.particle_cloud:
+            # T1->T2 Homogeneous tranform
             ti = p.theta; xi = p.x; yi = p.y;
             td = delta[2]; xd = delta[0]; yd = delta[1];
-            Ti = np.array([[np.cos(ti), -np.sin(ti), xi],
-                          [np.sin(ti), np.cos(ti), yi],
-                          [0, 0, 1]])
-            T_del = np.array([[np.cos(td), -np.sin(td), xd],
-                          [np.sin(td), np.cos(td), yd],
-                          [0, 0, 1]])
-            T_new = Ti @ T_del
-            p.x = T_new[0, 2]
-            p.y = T_new[1, 2]
-            p.theta = float(np.arctan2(T_new[1,0], T_new[0, 0]))
-            #p.x += delta[0] + np.random.randn() * odom_noise 
-            #p.y += delta[1] + np.random.randn() * odom_noise
-            #p.theta += delta[2] + np.random.randn() * heading_noise
+            #print(f"current p theta: {ti}")
+            #print(f"del p theta: {td}")
 
-    def random_p(self):
-        """function to get a random particle within the map"""
-        x = self.x_low + np.random.rand() * self.width
-        y = self.y_low + np.random.rand() * self.height
-        t = rand_theta = np.random.rand() * np.pi * 2  # radians
-        return Particle(x=x, y=y, theta=t)
+            #Ti = np.array([[np.cos(ti), -np.sin(ti), xi],
+            #              [np.sin(ti), np.cos(ti), yi],
+            #              [0, 0, 1]])
+            #T_del = np.array([[np.cos(td), -np.sin(td), xd],
+            #              [np.sin(td), np.cos(td), yd],
+            #              [0, 0, 1]])
+            #T_new = Ti @ T_del
+            #print(f"new p theta: {np.arctan2(T_new[1,0], T_new[0, 0])}")
+            ## Parse Transform for positions and theta
+            #p.x = T_new[0, 2]
+            #p.y = T_new[1, 2]
+            p.x += xd+odom_lin_noise*samples[0]
+            p.y += yd+odom_lin_noise*samples[1]
+            p.theta += td+odom_ang_noise*samples[2]
+
 
 
     def resample_particles(self):
@@ -307,32 +311,23 @@ class ParticleFilter(Node):
         for particle in self.particle_cloud:
             particles[particle.w] = particle
         sorted_p_keys = sorted(list(particles.keys()), reverse=True)
-        center_percent = .15
-        redist_percent = .7
-        random_percent = 1-center_percent-redist_percent
         
-        center_keys = sorted_p_keys[:round(self.n_particles * center_percent)]
-        dist_num = int(np.floor(self.n_particles * (center_percent + redist_percent))) 
+        center_keys = sorted_p_keys[:round(self.n_particles * self.center_percent)]
+        dist_num = int(np.floor(self.n_particles * self.redist_percent)) 
         redist_num = int(np.floor(dist_num / len(center_keys)))
-        lin_sd = .5
-        ang_sd = .02
-        self.particle_cloud = []
-        for ik, key in enumerate(center_keys):
+        self.particle_cloud = [particles[key] for key in center_keys]
+        for key in center_keys:
+            
             for i in range(redist_num):
-                new_x = np.random.normal(particles[key].x, lin_sd)
-                new_y = np.random.normal(particles[key].y, lin_sd)
-                new_theta = np.random.normal(particles[key].y, ang_sd)
+                new_x = np.random.normal(particles[key].x, self.lin_sd)
+                new_y = np.random.normal(particles[key].y, self.lin_sd)
+                new_theta = np.random.normal(particles[key].y, self.ang_sd)
                 self.particle_cloud.append(Particle(x=new_x, y=new_y, theta=new_theta)) 
 
         num_filled = len(center_keys) * redist_num
         num_extra = self.n_particles - num_filled
         for e in range(num_extra):
-            x_pos = self.x_low + np.random.rand() * self.width
-            y_pos = self.y_low + np.random.rand() * self.height
-            rand_theta = np.random.rand() * np.pi * 2  # radians
-            self.particle_cloud.append(Particle(
-                x=x_pos, y=y_pos, theta=rand_theta
-            ))
+            self.particle_cloud.append(self.random_p())
         ######################
 
     def update_particles_with_laser(self, r, theta):
@@ -351,8 +346,6 @@ class ParticleFilter(Node):
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
-                #print(f"w: {w}")
-                #print(f"w type: {type(w)}")
                 if np.isnan(w):
                     tot_weight += 200
                 else:
@@ -389,9 +382,6 @@ class ParticleFilter(Node):
         self.y_low = yl
         self.width = xu - xl  # directionless
         self.height = yu - yl  # directionless
-        print(f"width: {self.width}, height: {self.height}")
-        print(f"x_low: {self.x_low}, y_low: {self.y_low}")
-        print(f"x_up: {self.x_up}, y_up: {self.y_up}")
 
         grid_size = int(np.sqrt(self.n_particles))  # smallest square grid of particles
         width_increment = self.width / (grid_size + 1)
@@ -410,19 +400,25 @@ class ParticleFilter(Node):
         extra = self.n_particles - grid_num
 
         for e in range(extra):
-            x_pos = self.x_low + np.random.rand() * self.width
-            y_pos = self.y_low + np.random.rand() * self.height
-            rand_theta = np.random.rand() * np.pi * 2  # radians
-            self.particle_cloud.append(Particle(
-                x=x_pos, y=y_pos, theta=rand_theta
-            ))
+            self.particle_cloud.append(self.random_p())
         ######################
         self.normalize_particles()
         self.update_robot_pose()
 
+    def random_p(self):
+        """function to get a random particle within the map"""
+        t = np.random.rand() * np.pi * 2  # radians
+        while True:
+            x = self.x_low + np.random.rand() * self.width
+            y = self.y_low + np.random.rand() * self.height
+            t = np.random.rand() * np.pi * 2  # radians
+            if(np.isfinite(self.occupancy_field.get_closest_obstacle_distance(x, y))):
+                break;
+        return Particle(x=x, y=y, theta=t)
+
     def normalize_particles(self):
         """Make sure the particle weights define a valid distribution (i.e. sum to 1.0)"""
-        total_weight = sum(particle.w for particle in self.particle_cloud)
+        total_weight = sum([p.w for p in self.particle_cloud])
 
         for p in self.particle_cloud:
             p.w /= total_weight
