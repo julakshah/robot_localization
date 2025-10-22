@@ -267,8 +267,8 @@ class ParticleFilter(Node):
 
         for particle in self.particle_cloud:
             t = particle.theta
-            particle.x += delta[0] * np.sin(t)
-            particle.y += delta[1] * np.cos(t)
+            particle.x += delta[0] * np.sin(t) + delta[1] * np.sin(t + (np.pi/2))
+            particle.y += delta[0] * np.cos(t) + delta[1] * np.cos(t + (np.pi/2))
             particle.theta += delta[2]
 
     def random_p(self):
@@ -288,6 +288,7 @@ class ParticleFilter(Node):
         self.normalize_particles()
         # Create a dictionary to store particles with keys representing the weights of each
         ######################
+        print("resampling particles")
         percent_keep = .3
         dist_center = 0
         dist_sd = .33
@@ -391,13 +392,16 @@ class ParticleFilter(Node):
         # TODO create particles
         #   Julian
         ######################
-        bounding_box = self.occupancy_field.get_obstacle_bounding_box()
-        self.x_up = bounding_box[0][1]
-        self.x_low = bounding_box[0][0]
-        self.y_up = bounding_box[1][1]
-        self.y_low = bounding_box[1][0]
-        self.width = self.x_up - self.x_low  # directionless
-        self.height = self.y_up - self.y_low  # directionless
+        ((xl, xu), (yl, yu)) = self.occupancy_field.get_obstacle_bounding_box()
+        self.x_up = xu
+        self.x_low = xl
+        self.y_up = yu
+        self.y_low = yl
+        self.width = xu - xl  # directionless
+        self.height = yu - yl  # directionless
+        print(f"width: {self.width}, height: {self.height}")
+        print(f"x_low: {self.x_low}, y_low: {self.y_low}")
+        print(f"x_up: {self.x_up}, y_up: {self.y_up}")
 
         grid_size = int(np.sqrt(self.n_particles))  # smallest square grid of particles
         width_increment = self.width / (grid_size + 1)
