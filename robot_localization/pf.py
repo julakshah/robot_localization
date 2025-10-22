@@ -16,7 +16,7 @@ import math
 import time
 import numpy as np
 from occupancy_field import OccupancyField
-from helper_functions import TFHelper
+from helper_functions import TFHelper, draw_random_sample
 from rclpy.qos import qos_profile_sensor_data
 from angle_helpers import quaternion_from_euler
 
@@ -84,10 +84,12 @@ class ParticleFilter(Node):
         # the width and height of bounding box, set in initialize_particle_cloud
         self.width = 0
         self.height = 0
-        self.x_low = 0 #lower left corner
-        self.y_low = 0 #lower left corner
+        self.x_low = 0 #left bound
+        self.x_up = 0 #right bound
+        self.y_low = 0 #bottom bound
+        self.y_up = 0 #top bound
 
-        self.n_particles = 3000  # the number of particles to use
+        self.n_particles = 300  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = (
@@ -245,6 +247,7 @@ class ParticleFilter(Node):
         that indicates the change in position and angle between the odometry
         when the particles were last updated and the current odometry.
         """
+        delta = (0,0,0)
         new_odom_xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(
             self.odom_pose
         )
@@ -263,9 +266,17 @@ class ParticleFilter(Node):
             return
 
         for particle in self.particle_cloud:
-            particle.x += delta[0]
-            particle.y += delta[1]
+            t = particle.theta
+            particle.x += delta[0] * np.sin(t)
+            particle.y += delta[1] * np.cos(t)
             particle.theta += delta[2]
+
+    def random_p(self):
+        x = self.x_low + np.random.rand() * self.width
+        y = self.y_low + np.random.rand() * self.height
+        t = rand_theta = np.random.rand() * np.pi * 2  # radians
+        return Particle(x=x, y=y, theta=t)
+
 
     def resample_particles(self):
         """Resample the particles according to the new particle weights.
@@ -276,52 +287,60 @@ class ParticleFilter(Node):
         # make sure the distribution is normalized
         self.normalize_particles()
         # Create a dictionary to store particles with keys representing the weights of each
-        _particle_dict = {}
-        for particles in self.particle_cloud:
-            _particle_dict[particles.w] = particles
-        # Define list of particle weights to sort
-        _resample_weights = list(_particle_dict.keys())
-        print(f"resampled weights first is: {_resample_weights}")
-        # Keep top 15% of particles
-        _percentage_kept = 0.15
-        _mean_count = round(_percentage_kept * len(self.particle_cloud))
-        _resample_weights = sorted(_resample_weights)[-_mean_count:]
-        print(f"resampled weights then is {_resample_weights}")
-        # Define scalar for weight to standard dev conversion
-        _stdev_scalar = 10
+        ######################
+        percent_keep = .3
+        dist_center = 0
+        dist_sd = .33
+        resample_lin_noise = .1
+        resample_ang_noise = .02
 
-        for i in range(_mean_count):
-            for particle in self.particle_cloud[
-                i
-                * round(1 / _percentage_kept - 1) : (
-                    (i + 1) * round(1 / _percentage_kept - 1)
-                )
-            ]:
-                # Randomly choose x coordinate according to normal distribution
-                particle.x = np.random.normal(
-                    _particle_dict[_resample_weights[-(i+1)]].x,
-                    _resample_weights[-(i+1)] * _stdev_scalar,
-                )
-                # Randomly choose y coordinate according to normal distribution
-                particle.y = np.random.normal(
-                    _particle_dict[_resample_weights[-(i+1)]].y,
-                    _resample_weights[-(i+1)] * _stdev_scalar,
-                )
-        # Get index for the last particle resampled
-        _last_particle = len(_resample_weights) * round(1 / _percentage_kept - 1)
-        # Calculate how many particles remain
-        _remaining_particles = len(self.particle_cloud) - _last_particle
-        rand_vals = np.random.random_sample(2 * _remaining_particles)
-        # Get random values 
-        x_rand = rand_vals[0:_remaining_particles]
-        y_rand = rand_vals[_remaining_particles:]
-        # Adjust for map dimensions
-        x_rand = x_rand * self.width + self.x_low
-        y_rand = y_rand * self.height + self.y_low
-        # Resample random particles
-        for i in range(_remaining_particles):
-            self.particle_cloud[i].x = x_rand[i]
-            self.particle_cloud[i].y = y_rand[i]
+        #keep some particles based on weight kinda
+        num_keep = round(percent_keep * self.n_particles) 
+        self.particle_cloud = draw_random_sample(self.particle_cloud, [p.w for p in self.particle_cloud], num_keep)
+        #create random particles
+        for _ in range(self.n_particles - num_keep):
+            self.particle_cloud.append(self.random_p())
+
+        #add noise to particles
+        for p in self.particle_cloud:
+            samples = np.random.normal(dist_center, dist_sd, size=3)
+            p.x += resample_lin_noise*samples[0]
+            p.y += resample_lin_noise*samples[1]
+            p.theta += resample_ang_noise*samples[2]
+            p.x = max(self.x_up, min(self.x_low, p.x))
+            p.y = max(self.y_up, min(self.y_low, p.y))
+
+
+
+       # particles = {}
+       # for particle in self.particle_cloud:
+       #     particles[particle.w] = particle
+       # sorted_p_keys = sorted(list(particles.keys()), reverse=True)
+       # center_percent = .15
+       # redist_percent = .7
+       # random_percent = 1-center_percent-redist_percent
+       # 
+       # center_keys = sorted_p_keys[:round(self.n_particles * center_percent)]
+       # dist_num = int(np.floor(self.n_particles * (center_percent + redist_percent))) 
+       # redist_num = int(np.floor(dist_num / len(center_keys)))
+       # sd = 1
+       # for ik, key in enumerate(center_keys):
+       #     for i in range(redist_num):
+       #         new_x = np.random.normal(particles[key].x, sd)
+       #         new_y = np.random.normal(particles[key].y, sd)
+       #         new_theta = np.random.rand() * 2 * np.pi
+       #         self.particle_cloud[ik * redist_num + i] = Particle(x=new_x, y=new_y, theta=new_theta)
+
+       # num_dist = len(center_keys) * redist_num
+       # num_extra = self.n_particles - num_dist
+       # for e in range(num_extra):
+       #     x_pos = self.x_low + np.random.rand() * self.width
+       #     y_pos = self.y_low + np.random.rand() * self.height
+       #     rand_theta = np.random.rand() * np.pi * 2  # radians
+       #     self.particle_cloud.append(Particle(
+       #         x=x_pos, y=y_pos, theta=rand_theta
+       #     ))
+       # ######################
 
     def update_particles_with_laser(self, r, theta):
         """Updates the particle weights in response to the scan data
@@ -334,16 +353,21 @@ class ParticleFilter(Node):
         print("running update")
         for p in self.particle_cloud:
             particle_ang = p.theta  # radians
-            x_list = r * np.sin(theta + particle_ang)
-            y_list = r * np.cos(theta + particle_ang)
+            x_list = r * np.sin(theta + particle_ang) + p.x
+            y_list = r * np.cos(theta + particle_ang) + p.y
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
                 #print(f"w: {w}")
                 #print(f"w type: {type(w)}")
-                if not np.isnan(w):
-                    tot_weight = tot_weight + w
-            p.w = tot_weight
+                if np.isnan(w):
+                    tot_weight += 200
+                else:
+                    tot_weight += w
+
+            print(f"tot_weight is: {tot_weight}")
+            print(f"tot_weight inv is: {1/tot_weight}")
+            p.w = 1/tot_weight
         ######################
 
     def update_initial_pose(self, msg):
@@ -368,12 +392,12 @@ class ParticleFilter(Node):
         #   Julian
         ######################
         bounding_box = self.occupancy_field.get_obstacle_bounding_box()
-        x_up = bounding_box[0][1]
+        self.x_up = bounding_box[0][1]
         self.x_low = bounding_box[0][0]
-        y_up = bounding_box[1][1]
+        self.y_up = bounding_box[1][1]
         self.y_low = bounding_box[1][0]
-        self.width = x_up - self.x_low  # directionless
-        self.height = y_up - self.y_low  # directionless
+        self.width = self.x_up - self.x_low  # directionless
+        self.height = self.y_up - self.y_low  # directionless
 
         grid_size = int(np.sqrt(self.n_particles))  # smallest square grid of particles
         width_increment = self.width / (grid_size + 1)
