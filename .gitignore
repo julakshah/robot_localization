@@ -14,6 +14,10 @@ build/
 .project
 .cproject
 
+# bags
+bags/
+*.pgm
+
 # qcreator stuff
 CMakeLists.txt.user
 

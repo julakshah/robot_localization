@@ -346,8 +346,8 @@ class ParticleFilter(Node):
         print("running update")
         for p in self.particle_cloud:
             particle_ang = p.theta  # radians
-            x_list = r * np.sin(theta + particle_ang) + p.x
-            y_list = r * np.cos(theta + particle_ang) + p.y
+            x_list = r * np.cos(theta + particle_ang) + p.x
+            y_list = r * np.sin(theta + particle_ang) + p.y
             weights = self.occupancy_field.get_closest_obstacle_distance(x_list, y_list)
             tot_weight = 0
             for w in weights:
