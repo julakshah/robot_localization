@@ -86,19 +86,19 @@ class ParticleFilter(Node):
         self.x_up = 0  # right bound
         self.y_low = 0  # bottom bound
         self.y_up = 0  # top bound
-        self.center_percent = 0.2  # initial percent of centers to distribute around
+        self.center_percent = 0.15  # initial percent of centers to distribute around
         self.center_percent_final = (
-            0.02  # final percent of centers to distribute around
+            0.05  # final percent of centers to distribute around
         )
         self.redist_percent = (
             0.2  # initial amount particles to redistriubte around centers
         )
         self.redist_percent_final = (
-            0.93  # final amount particles to redistriubte around centers
+            0.95  # final amount particles to redistriubte around centers
         )
         self.lin_sd = 0.1  # linear standard deviation
-        self.ang_sd = 0.02  # angular standard deviation
-        self.scale_iteration_bound = 9  # num iterations to descale random particles
+        self.ang_sd = 0.05  # angular standard deviation
+        self.scale_iteration_bound = 10  # num iterations to descale random particles
         self.redist_witheld = (
             self.redist_percent_final - self.redist_percent
         )  # percent of witheld particles till bound is reached
