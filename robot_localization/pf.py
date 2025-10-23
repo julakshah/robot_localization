@@ -222,12 +222,7 @@ class ParticleFilter(Node):
         )
 
     def update_robot_pose(self):
-        """Update the estimate of the robot's pose given the updated particles.
-        There are two logical methods for this:
-            (1): compute the mean pose
-            (2): compute the most likely pose (i.e. the mode of the distribution)
-        """
-        # option 2
+        """Update the estimate of the robot's pose given the updated particles."""
 
         # first make sure that the particle weights are normalized
         self.normalize_particles()
@@ -235,10 +230,12 @@ class ParticleFilter(Node):
         # get the best particle
         best_particle = max(self.particle_cloud, key=lambda p: p.w)
 
+        # get components of pose
         x = best_particle.x
         y = best_particle.y
         theta = best_particle.theta
 
+        # apply to robot
         new_pose = quaternion_from_euler(0, 0, theta)
         self.robot_pose = Pose(
             position=Point(x=x, y=y),
