@@ -1,7 +1,8 @@
 # Comprobo Robot Localization Project
 
 _ENGR3590: A Computational Introduction to Robotics_
-_Ansel Harris Crowne, Brenna O'Donnell, Julian Shah_
+
+_Julian Shah, Ansel Harris Crowne, Brenna O'Donnell_
 
 ---
 
@@ -37,7 +38,9 @@ Some minor optimization here from doing vector math isntead of iterating through
 
 This method sorts the particles and chooses where are the best spots to add more particles in order to approach the true robot position. Our method takes a percentage of the highest weighted particles (p_high) and distributes a percentage of the rest (p_rest) of the particles nearby their pose and orientation in the hopes of finding a better match for the scan data. This is done through a gaussian distribution so that most of the particles are near the particle, however some amount of them will be farther away. This baked in error helps compensate for the cumulative error from things like the scanner noise or the discrete abstraction of the map (among other things).
 
-[image of gaussian distribution]
+<p align="center">
+<img src="media/gaussian.jpg" alt="drawing" width="70%"/>
+</p>
 
 The rest of the unallocated particles are sampled randomly across the map bounding box in order to reduce the likelihood of converging into an incorrect position. This is another element of controlled, baked in, error.
 
