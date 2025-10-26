@@ -39,7 +39,7 @@ Some minor optimization here from doing vector math isntead of iterating through
 This method sorts the particles and chooses where are the best spots to add more particles in order to approach the true robot position. Our method takes a percentage of the highest weighted particles (p_high) and distributes a percentage of the rest (p_rest) of the particles nearby their pose and orientation in the hopes of finding a better match for the scan data. This is done through a gaussian distribution so that most of the particles are near the particle, however some amount of them will be farther away. This baked in error helps compensate for the cumulative error from things like the scanner noise or the discrete abstraction of the map (among other things).
 
 <p align="center">
-<img src="media/gaussian.jpg" alt="drawing" width="70%"/>
+<img src="media/gaussian.jpg" alt="gaussian" width="50%"/>
 </p>
 
 The rest of the unallocated particles are sampled randomly across the map bounding box in order to reduce the likelihood of converging into an incorrect position. This is another element of controlled, baked in, error.
@@ -48,7 +48,9 @@ The last layer of complexity that helps the particles converge properly is a sca
 
 In practise, it is mostly good with some bad. It helps the model more consistently converge on the target location (where before it was apprx 1 in 10 runs converging now it's 3 in 5 times convergin). It also makes complex movements, like the neato turning, stay in the true particle location.
 
-[image of turning in run 1]
+<p align="center">
+<img src="media/filter_turn.gif" alt="turn" width="50%"/>
+</p>
 
 ### update_robot_pose()
 
